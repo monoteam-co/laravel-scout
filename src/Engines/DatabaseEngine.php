@@ -72,15 +72,15 @@ class DatabaseEngine extends Engine implements PaginatesEloquentModels
     public function paginate(Builder $builder, $perPage, $page)
     {
         return $this->buildSearchQuery($builder)
-                ->when($builder->orders, function ($query) use ($builder) {
-                    foreach ($builder->orders as $order) {
-                        $query->orderBy($order['column'], $order['direction']);
-                    }
-                })
-                ->when(! $this->getFullTextColumns($builder), function ($query) use ($builder) {
-                    $query->orderBy($builder->model->getKeyName(), 'desc');
-                })
-                ->paginate($perPage, ['*'], 'page', $page);
+            ->when($builder->orders, function ($query) use ($builder) {
+                foreach ($builder->orders as $order) {
+                    $query->orderBy($order['column'], $order['direction']);
+                }
+            })
+            ->when(!$this->getFullTextColumns($builder), function ($query) use ($builder) {
+                $query->orderBy($builder->model->getKeyName(), 'desc');
+            })
+            ->paginate($perPage, ['*'], 'page', $page);
     }
 
     /**
@@ -94,16 +94,28 @@ class DatabaseEngine extends Engine implements PaginatesEloquentModels
     public function simplePaginate(Builder $builder, $perPage, $page)
     {
         return $this->buildSearchQuery($builder)
-                ->when($builder->orders, function ($query) use ($builder) {
-                    foreach ($builder->orders as $order) {
-                        $query->orderBy($order['column'], $order['direction']);
-                    }
-                })
-                ->when(! $this->getFullTextColumns($builder), function ($query) use ($builder) {
-                    $query->orderBy($builder->model->getKeyName(), 'desc');
-                })
-                ->simplePaginate($perPage, ['*'], 'page', $page);
+            ->when($builder->orders, function ($query) use ($builder) {
+                foreach ($builder->orders as $order) {
+                    $query->orderBy($order['column'], $order['direction']);
+                }
+            })
+            ->when(!$this->getFullTextColumns($builder), function ($query) use ($builder) {
+                $query->orderBy($builder->model->getKeyName(), 'desc');
+            })
+            ->simplePaginate($perPage, ['*'], 'page', $page);
     }
+
+    /**
+     * Count matched records of given search on the engine.
+     *
+     * @param  \Laravel\Scout\Builder  $builder
+     * @return int
+     */
+    public function count(Builder $builder)
+    {
+        return $this->buildSearchQuery($builder)->count();
+    }
+
 
     /**
      * Get the Eloquent models for the given builder.
@@ -116,7 +128,7 @@ class DatabaseEngine extends Engine implements PaginatesEloquentModels
     protected function searchModels(Builder $builder, $page = null, $perPage = null)
     {
         return $this->buildSearchQuery($builder)
-            ->when(! is_null($page) && ! is_null($perPage), function ($query) use ($page, $perPage) {
+            ->when(!is_null($page) && !is_null($perPage), function ($query) use ($page, $perPage) {
                 $query->forPage($page, $perPage);
             })
             ->when($builder->orders, function ($query) use ($builder) {
@@ -124,7 +136,7 @@ class DatabaseEngine extends Engine implements PaginatesEloquentModels
                     $query->orderBy($order['column'], $order['direction']);
                 }
             })
-            ->when(! $this->getFullTextColumns($builder), function ($query) use ($builder) {
+            ->when(!$this->getFullTextColumns($builder), function ($query) use ($builder) {
                 $query->orderBy($builder->model->getKeyName(), 'desc');
             })
             ->get();
@@ -146,7 +158,8 @@ class DatabaseEngine extends Engine implements PaginatesEloquentModels
         );
 
         return $this->constrainForSoftDeletes(
-            $builder, $this->addAdditionalConstraints($builder, $query->take($builder->limit))
+            $builder,
+            $this->addAdditionalConstraints($builder, $query->take($builder->limit))
         );
     }
 
@@ -169,9 +182,9 @@ class DatabaseEngine extends Engine implements PaginatesEloquentModels
             $connectionType = $builder->model->getConnection()->getDriverName();
 
             $canSearchPrimaryKey = ctype_digit($builder->query) &&
-                                   in_array($builder->model->getKeyType(), ['int', 'integer']) &&
-                                   ($connectionType != 'pgsql' || $builder->query <= PHP_INT_MAX) &&
-                                   in_array($builder->model->getKeyName(), $columns);
+                in_array($builder->model->getKeyType(), ['int', 'integer']) &&
+                ($connectionType != 'pgsql' || $builder->query <= PHP_INT_MAX) &&
+                in_array($builder->model->getKeyName(), $columns);
 
             if ($canSearchPrimaryKey) {
                 $query->orWhere($builder->model->getQualifiedKeyName(), $builder->query);
@@ -194,7 +207,7 @@ class DatabaseEngine extends Engine implements PaginatesEloquentModels
                     $query->orWhere(
                         $builder->model->qualifyColumn($column),
                         $likeOperator,
-                        in_array($column, $prefixColumns) ? $builder->query.'%' : '%'.$builder->query.'%',
+                        in_array($column, $prefixColumns) ? $builder->query . '%' : '%' . $builder->query . '%',
                     );
                 }
             }
@@ -210,19 +223,19 @@ class DatabaseEngine extends Engine implements PaginatesEloquentModels
      */
     protected function addAdditionalConstraints(Builder $builder, $query)
     {
-        return $query->when(! is_null($builder->callback), function ($query) use ($builder) {
+        return $query->when(!is_null($builder->callback), function ($query) use ($builder) {
             call_user_func($builder->callback, $query, $builder, $builder->query);
-        })->when(! $builder->callback && count($builder->wheres) > 0, function ($query) use ($builder) {
+        })->when(!$builder->callback && count($builder->wheres) > 0, function ($query) use ($builder) {
             foreach ($builder->wheres as $key => $value) {
                 if ($key !== '__soft_deleted') {
                     $query->where($key, '=', $value);
                 }
             }
-        })->when(! $builder->callback && count($builder->whereIns) > 0, function ($query) use ($builder) {
+        })->when(!$builder->callback && count($builder->whereIns) > 0, function ($query) use ($builder) {
             foreach ($builder->whereIns as $key => $values) {
                 $query->whereIn($key, $values);
             }
-        })->when(! is_null($builder->queryCallback), function ($query) use ($builder) {
+        })->when(!is_null($builder->queryCallback), function ($query) use ($builder) {
             call_user_func($builder->queryCallback, $query);
         });
     }
@@ -240,8 +253,10 @@ class DatabaseEngine extends Engine implements PaginatesEloquentModels
             return $query->withoutTrashed();
         } elseif (Arr::get($builder->wheres, '__soft_deleted') === 1) {
             return $query->onlyTrashed();
-        } elseif (in_array(SoftDeletes::class, class_uses_recursive(get_class($builder->model))) &&
-                  config('scout.soft_delete', false)) {
+        } elseif (
+            in_array(SoftDeletes::class, class_uses_recursive(get_class($builder->model))) &&
+            config('scout.soft_delete', false)
+        ) {
             return $query->withTrashed();
         }
 
@@ -330,8 +345,8 @@ class DatabaseEngine extends Engine implements PaginatesEloquentModels
         $results = $results['results'];
 
         return count($results) > 0
-                    ? collect($results->modelKeys())
-                    : collect();
+            ? collect($results->modelKeys())
+            : collect();
     }
 
     /**

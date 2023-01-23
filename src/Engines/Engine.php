@@ -133,7 +133,9 @@ abstract class Engine
     public function get(Builder $builder)
     {
         return $this->map(
-            $builder, $this->search($builder), $builder->model
+            $builder,
+            $this->search($builder),
+            $builder->model
         );
     }
 
@@ -146,7 +148,17 @@ abstract class Engine
     public function cursor(Builder $builder)
     {
         return $this->lazyMap(
-            $builder, $this->search($builder), $builder->model
+            $builder,
+            $this->search($builder),
+            $builder->model
         );
     }
+
+    /**
+     * Retrieve the number of matching results.
+     *
+     * @param \Laravel\Scout\Builder $builder
+     * @return int Number of results
+     */
+    abstract public function count(Builder $builder);
 }

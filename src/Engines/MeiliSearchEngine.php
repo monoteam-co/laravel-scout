@@ -69,7 +69,7 @@ class MeiliSearchEngine extends Engine
             );
         })->filter()->values()->all();
 
-        if (! empty($objects)) {
+        if (!empty($objects)) {
             $index->addDocuments($objects, $models->first()->getKeyName());
         }
     }
@@ -124,6 +124,21 @@ class MeiliSearchEngine extends Engine
             'offset' => ($page - 1) * $perPage,
             'sort' => $this->buildSortFromOrderByClauses($builder),
         ]));
+    }
+
+    /**
+     * Count matched records of given search on the engine.
+     * @param  \Laravel\Scout\Builder  $builder
+     * @return int
+     */
+    public function count(Builder $builder)
+    {
+        $raw = $this->performSearch($builder, array_filter([
+            'filters' => $this->filters($builder),
+            'sort' => $this->buildSortFromOrderByClauses($builder),
+        ]));
+
+        return (int) $raw['nbHits'];
     }
 
     /**
@@ -182,8 +197,8 @@ class MeiliSearchEngine extends Engine
             }
 
             return is_numeric($value)
-                            ? sprintf('%s=%s', $key, $value)
-                            : sprintf('%s="%s"', $key, $value);
+                ? sprintf('%s=%s', $key, $value)
+                : sprintf('%s="%s"', $key, $value);
         });
 
         foreach ($builder->whereIns as $key => $values) {
@@ -193,8 +208,8 @@ class MeiliSearchEngine extends Engine
                 }
 
                 return filter_var($value, FILTER_VALIDATE_INT) !== false
-                                ? sprintf('%s=%s', $key, $value)
-                                : sprintf('%s="%s"', $key, $value);
+                    ? sprintf('%s=%s', $key, $value)
+                    : sprintf('%s="%s"', $key, $value);
             })->values()->implode(' OR ')));
         }
 
@@ -210,7 +225,7 @@ class MeiliSearchEngine extends Engine
     protected function buildSortFromOrderByClauses(Builder $builder): array
     {
         return collect($builder->orders)->map(function (array $order) {
-            return $order['column'].':'.$order['direction'];
+            return $order['column'] . ':' . $order['direction'];
         })->toArray();
     }
 
@@ -245,8 +260,8 @@ class MeiliSearchEngine extends Engine
     public function mapIdsFrom($results, $key)
     {
         return count($results['hits']) === 0
-                ? collect()
-                : collect($results['hits'])->pluck($key)->values();
+            ? collect()
+            : collect($results['hits'])->pluck($key)->values();
     }
 
     /**
@@ -281,7 +296,8 @@ class MeiliSearchEngine extends Engine
         $objectIdPositions = array_flip($objectIds);
 
         return $model->getScoutModelsByIds(
-            $builder, $objectIds
+            $builder,
+            $objectIds
         )->filter(function ($model) use ($objectIds) {
             return in_array($model->getScoutKey(), $objectIds);
         })->sortBy(function ($model) use ($objectIdPositions) {
@@ -307,7 +323,8 @@ class MeiliSearchEngine extends Engine
         $objectIdPositions = array_flip($objectIds);
 
         return $model->queryScoutModelsByIds(
-            $builder, $objectIds
+            $builder,
+            $objectIds
         )->cursor()->filter(function ($model) use ($objectIds) {
             return in_array($model->getScoutKey(), $objectIds);
         })->sortBy(function ($model) use ($objectIdPositions) {

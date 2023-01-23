@@ -56,6 +56,16 @@ class NullEngine extends Engine
     }
 
     /**
+     * Count matched records of given search on the engine.
+     * @param  \Laravel\Scout\Builder  $builder
+     * @return int
+     */
+    public function count(Builder $builder)
+    {
+        return 0;
+    }
+
+    /**
      * Pluck and return the primary keys of the given results.
      *
      * @param  mixed  $results

@@ -70,7 +70,7 @@ class AlgoliaEngine extends Engine
             );
         })->filter()->values()->all();
 
-        if (! empty($objects)) {
+        if (!empty($objects)) {
             $index->saveObjects($objects);
         }
     }
@@ -128,6 +128,23 @@ class AlgoliaEngine extends Engine
     }
 
     /**
+     * Count matched records of given search on the engine.
+     * @param  \Laravel\Scout\Builder  $builder
+     * @return int
+     */
+    public function count(Builder $builder)
+    {
+        $raw = $this->performSearch($builder, array_filter([
+            'numericFilters' => $this->filters($builder),
+            'hitsPerPage' => 0,
+            'attributesToRetrieve' => null,
+            'attributesToHighlight' => null
+        ]));
+
+        return (int) $raw['nbHits'];
+    }
+
+    /**
      * Perform the given search on the engine.
      *
      * @param  \Laravel\Scout\Builder  $builder
@@ -163,12 +180,12 @@ class AlgoliaEngine extends Engine
     protected function filters(Builder $builder)
     {
         $wheres = collect($builder->wheres)->map(function ($value, $key) {
-            return $key.'='.$value;
+            return $key . '=' . $value;
         })->values();
 
         return $wheres->merge(collect($builder->whereIns)->map(function ($values, $key) {
             return collect($values)->map(function ($value) use ($key) {
-                return $key.'='.$value;
+                return $key . '=' . $value;
             })->all();
         })->values())->values()->all();
     }
@@ -203,7 +220,8 @@ class AlgoliaEngine extends Engine
         $objectIdPositions = array_flip($objectIds);
 
         return $model->getScoutModelsByIds(
-            $builder, $objectIds
+            $builder,
+            $objectIds
         )->filter(function ($model) use ($objectIds) {
             return in_array($model->getScoutKey(), $objectIds);
         })->sortBy(function ($model) use ($objectIdPositions) {
@@ -229,12 +247,13 @@ class AlgoliaEngine extends Engine
         $objectIdPositions = array_flip($objectIds);
 
         return $model->queryScoutModelsByIds(
-                $builder, $objectIds
-            )->cursor()->filter(function ($model) use ($objectIds) {
-                return in_array($model->getScoutKey(), $objectIds);
-            })->sortBy(function ($model) use ($objectIdPositions) {
-                return $objectIdPositions[$model->getScoutKey()];
-            })->values();
+            $builder,
+            $objectIds
+        )->cursor()->filter(function ($model) use ($objectIds) {
+            return in_array($model->getScoutKey(), $objectIds);
+        })->sortBy(function ($model) use ($objectIdPositions) {
+            return $objectIdPositions[$model->getScoutKey()];
+        })->values();
     }
 
     /**

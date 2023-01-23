@@ -77,6 +77,17 @@ class CollectionEngine extends Engine
     }
 
     /**
+     * Count matched records of given search on the engine.
+     * @param  \Laravel\Scout\Builder  $builder
+     * @return int
+     */
+    public function count(Builder $builder)
+    {
+        $models = $this->searchModels($builder);
+        return count($models);
+    }
+
+    /**
      * Get the Eloquent models for the given builder.
      *
      * @param  \Laravel\Scout\Builder  $builder
@@ -85,50 +96,50 @@ class CollectionEngine extends Engine
     protected function searchModels(Builder $builder)
     {
         $query = $builder->model->query()
-                        ->when(! is_null($builder->callback), function ($query) use ($builder) {
-                            call_user_func($builder->callback, $query, $builder, $builder->query);
-                        })
-                        ->when(! $builder->callback && count($builder->wheres) > 0, function ($query) use ($builder) {
-                            foreach ($builder->wheres as $key => $value) {
-                                if ($key !== '__soft_deleted') {
-                                    $query->where($key, $value);
-                                }
-                            }
-                        })
-                        ->when(! $builder->callback && count($builder->whereIns) > 0, function ($query) use ($builder) {
-                            foreach ($builder->whereIns as $key => $values) {
-                                $query->whereIn($key, $values);
-                            }
-                        })
-                        ->when($builder->orders, function ($query) use ($builder) {
-                            foreach ($builder->orders as $order) {
-                                $query->orderBy($order['column'], $order['direction']);
-                            }
-                        }, function ($query) use ($builder) {
-                            $query->orderBy($builder->model->getKeyName(), 'desc');
-                        });
+            ->when(!is_null($builder->callback), function ($query) use ($builder) {
+                call_user_func($builder->callback, $query, $builder, $builder->query);
+            })
+            ->when(!$builder->callback && count($builder->wheres) > 0, function ($query) use ($builder) {
+                foreach ($builder->wheres as $key => $value) {
+                    if ($key !== '__soft_deleted') {
+                        $query->where($key, $value);
+                    }
+                }
+            })
+            ->when(!$builder->callback && count($builder->whereIns) > 0, function ($query) use ($builder) {
+                foreach ($builder->whereIns as $key => $values) {
+                    $query->whereIn($key, $values);
+                }
+            })
+            ->when($builder->orders, function ($query) use ($builder) {
+                foreach ($builder->orders as $order) {
+                    $query->orderBy($order['column'], $order['direction']);
+                }
+            }, function ($query) use ($builder) {
+                $query->orderBy($builder->model->getKeyName(), 'desc');
+            });
 
         $models = $this->ensureSoftDeletesAreHandled($builder, $query)
-                        ->get()
-                        ->values();
+            ->get()
+            ->values();
 
         if (count($models) === 0) {
             return $models;
         }
 
         return $models->filter(function ($model) use ($builder) {
-            if (! $model->shouldBeSearchable()) {
+            if (!$model->shouldBeSearchable()) {
                 return false;
             }
 
-            if (! $builder->query) {
+            if (!$builder->query) {
                 return true;
             }
 
             $searchables = $model->toSearchableArray();
 
             foreach ($searchables as $value) {
-                if (! is_scalar($value)) {
+                if (!is_scalar($value)) {
                     $value = json_encode($value);
                 }
 
@@ -154,8 +165,10 @@ class CollectionEngine extends Engine
             return $query->withoutTrashed();
         } elseif (Arr::get($builder->wheres, '__soft_deleted') === 1) {
             return $query->onlyTrashed();
-        } elseif (in_array(SoftDeletes::class, class_uses_recursive(get_class($builder->model))) &&
-                  config('scout.soft_delete', false)) {
+        } elseif (
+            in_array(SoftDeletes::class, class_uses_recursive(get_class($builder->model))) &&
+            config('scout.soft_delete', false)
+        ) {
             return $query->withTrashed();
         }
 
@@ -173,8 +186,8 @@ class CollectionEngine extends Engine
         $results = array_values($results['results']);
 
         return count($results) > 0
-                    ? collect($results)->pluck($results[0]->getKeyName())
-                    : collect();
+            ? collect($results)->pluck($results[0]->getKeyName())
+            : collect();
     }
 
     /**
@@ -194,14 +207,15 @@ class CollectionEngine extends Engine
         }
 
         $objectIds = collect($results)
-                ->pluck($model->getKeyName())
-                ->values()
-                ->all();
+            ->pluck($model->getKeyName())
+            ->values()
+            ->all();
 
         $objectIdPositions = array_flip($objectIds);
 
         return $model->getScoutModelsByIds(
-            $builder, $objectIds
+            $builder,
+            $objectIds
         )->filter(function ($model) use ($objectIds) {
             return in_array($model->getScoutKey(), $objectIds);
         })->sortBy(function ($model) use ($objectIdPositions) {
@@ -226,18 +240,19 @@ class CollectionEngine extends Engine
         }
 
         $objectIds = collect($results)
-                ->pluck($model->getKeyName())
-                ->values()->all();
+            ->pluck($model->getKeyName())
+            ->values()->all();
 
         $objectIdPositions = array_flip($objectIds);
 
         return $model->queryScoutModelsByIds(
-                $builder, $objectIds
-            )->cursor()->filter(function ($model) use ($objectIds) {
-                return in_array($model->getScoutKey(), $objectIds);
-            })->sortBy(function ($model) use ($objectIdPositions) {
-                return $objectIdPositions[$model->getScoutKey()];
-            })->values();
+            $builder,
+            $objectIds
+        )->cursor()->filter(function ($model) use ($objectIds) {
+            return in_array($model->getScoutKey(), $objectIds);
+        })->sortBy(function ($model) use ($objectIdPositions) {
+            return $objectIdPositions[$model->getScoutKey()];
+        })->values();
     }
 
     /**

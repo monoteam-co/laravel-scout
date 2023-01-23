@@ -254,6 +254,16 @@ class Builder
     }
 
     /**
+     * Retrieve the number of matching results.
+     *
+     * @return int Number of results
+     */
+    public function count()
+    {
+        return $this->engine()->count($this);
+    }
+
+    /**
      * Get the raw results of the search.
      *
      * @return mixed
@@ -324,7 +334,9 @@ class Builder
         $perPage = $perPage ?: $this->model->getPerPage();
 
         $results = $this->model->newCollection($engine->map(
-            $this, $rawResults = $engine->paginate($this, $perPage, $page), $this->model
+            $this,
+            $rawResults = $engine->paginate($this, $perPage, $page),
+            $this->model
         )->all());
 
         $paginator = Container::getInstance()->makeWith(Paginator::class, [
@@ -396,7 +408,9 @@ class Builder
         $perPage = $perPage ?: $this->model->getPerPage();
 
         $results = $this->model->newCollection($engine->map(
-            $this, $rawResults = $engine->paginate($this, $perPage, $page), $this->model
+            $this,
+            $rawResults = $engine->paginate($this, $perPage, $page),
+            $this->model
         )->all());
 
         return Container::getInstance()->makeWith(LengthAwarePaginator::class, [
@@ -475,7 +489,8 @@ class Builder
         }
 
         return $this->model->queryScoutModelsByIds(
-            $this, $ids
+            $this,
+            $ids
         )->toBase()->getCountForPagination();
     }
 
